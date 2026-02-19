@@ -1,0 +1,406 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --primary: #6366f1;
+  --primary-glow: rgba(99, 102, 241, 0.4);
+  --secondary: #ec4899;
+  --accent: #8b5cf6;
+  --bg-main: #0f172a;
+  --bg-card: rgba(30, 41, 59, 0.7);
+  --bg-sidebar: #1e293b;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --border: rgba(255, 255, 255, 0.1);
+  --font-family: 'Outfit', sans-serif;
+  --transition-fast: 0.2s ease;
+  --transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-size: 18px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Glassmorphism */
+.glass {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-main);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Layout */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 280px;
+  background-color: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  height: 100vh;
+  z-index: 100;
+  transition: transform var(--transition-slow);
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 280px;
+  padding: 40px;
+  max-width: 1600px;
+}
+
+/* Typography */
+h1,
+h2,
+h3,
+h4,
+h5 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Utilities */
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.grid-dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+/* Cards */
+.card {
+  padding: 24px;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+/* Animation Keys */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease forwards;
+}
+
+/* Responsive Design */
+@media (max-width: 1400px) {
+  .grid-dashboard {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+}
+
+@media (max-width: 1024px) {
+  .main-content {
+    padding: 24px;
+  }
+
+  .grid-dashboard {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+  }
+
+  /* Adjust table for tablets */
+  table {
+    font-size: 14px;
+  }
+
+  table th,
+  table td {
+    padding: 12px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .mobile-toggle {
+    display: block !important;
+  }
+
+  .sidebar {
+    transform: translateX(-100%);
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .main-content {
+    margin-left: 0;
+    padding: 16px;
+  }
+
+  .content-spacing {
+    padding: 0 !important;
+  }
+
+  .flex-between {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .flex-between>div {
+    width: 100%;
+  }
+
+  /* Make search inputs full width on mobile */
+  .flex-between input {
+    min-width: 0;
+  }
+
+  .grid-dashboard {
+    grid-template-columns: 1fr !important;
+  }
+
+  h1 {
+    font-size: 24px !important;
+    margin-bottom: 8px;
+  }
+
+  h2 {
+    font-size: 20px !important;
+  }
+
+  h3 {
+    font-size: 18px !important;
+  }
+
+  /* Responsive card padding */
+  .card {
+    padding: 16px !important;
+  }
+
+  /* Responsive buttons */
+  button {
+    font-size: 14px !important;
+    padding: 10px 16px !important;
+  }
+
+  /* Table responsiveness */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    font-size: 13px;
+  }
+
+  table th,
+  table td {
+    padding: 10px 8px !important;
+    font-size: 12px !important;
+  }
+
+  /* Stack forms on mobile */
+  form>div {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Responsive stat cards */
+  .stat-card {
+    min-width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    font-size: 14px;
+  }
+
+  .main-content {
+    padding: 12px;
+  }
+
+  h1 {
+    font-size: 20px !important;
+  }
+
+  h2 {
+    font-size: 18px !important;
+  }
+
+  h3 {
+    font-size: 16px !important;
+  }
+
+  .card {
+    padding: 12px !important;
+    border-radius: 12px;
+  }
+
+  button {
+    font-size: 13px !important;
+    padding: 8px 12px !important;
+  }
+
+  /* Even smaller table text on very small screens */
+  table th,
+  table td {
+    padding: 8px 6px !important;
+    font-size: 11px !important;
+  }
+
+  /* Hide less important columns on mobile */
+  .hide-mobile {
+    display: none !important;
+  }
+
+  /* Make action buttons stack */
+  .action-buttons {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  /* Smaller icons */
+  svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  /* Responsive modal/form widths */
+  .modal,
+  .form-container {
+    width: 95% !important;
+    max-width: 95% !important;
+  }
+}
+
+/* Tablet specific (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .grid-dashboard {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .main-content {
+    padding: 24px;
+  }
+
+  /* Two column forms on tablets */
+  form>div.grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Hover effects only on non-touch devices */
+@media (hover: hover) and (pointer: fine) {
+  .card:hover {
+    transform: translateY(-4px);
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* Fix dropdown option visibility */
+select option {
+  background-color: var(--bg-sidebar);
+  color: white;
+}
+
+/* Table Utilities */
+.clickable-row {
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.clickable-row:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Responsive utility classes */
+.hide-mobile {
+  display: initial;
+}
+
+.hide-desktop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .hide-mobile {
+    display: none !important;
+  }
+
+  .hide-desktop {
+    display: initial !important;
+  }
+}
+
+/* Ensure images are responsive */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Responsive content spacing */
+.content-spacing {
+  padding: 0;
+}
+
+/* Make overflow tables scrollable horizontally */
+.table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
