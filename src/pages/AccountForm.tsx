@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Save, ChevronLeft, DollarSign, FileText, Calendar, CreditCard, User, Building, Plus, X, List, Edit, Trash2, TrendingUp } from 'lucide-react';
 import Header from '../components/Header';
 import { accountService, chartOfAccountsService, AccountTransaction, AccountCategory } from '../services/accountService';
+import { orderService, Order } from '../services/orderService';
+import { productService, Product } from '../services/productService';
 import { showToast } from '../components/Toast';
 
 const AccountForm = () => {
@@ -15,6 +17,10 @@ const AccountForm = () => {
     // Data Sources
     const [categories, setCategories] = useState<AccountCategory[]>([]);
     const [loadingCategories, setLoadingCategories] = useState(false);
+    const [bankStats, setBankStats] = useState<{ balance: number, income: number, expense: number } | null>(null);
+    const [cashStats, setCashStats] = useState<{ balance: number, income: number, expense: number } | null>(null);
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
 
     // Form State
     const [formData, setFormData] = useState<AccountTransaction>({
@@ -48,15 +54,54 @@ const AccountForm = () => {
     const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 
     // Payment/Source Account Search State
-    const [paymentSearch, setPaymentSearch] = useState('');
-    const [isPaymentDropdownOpen, setIsPaymentDropdownOpen] = useState(false);
+    // Removed legacy payment dropdown state
 
     useEffect(() => {
         fetchCategories();
+        fetchBalances();
+        fetchOrdersAndProducts();
         if (isEdit && id) {
             fetchTransaction();
         }
     }, [id]);
+
+    const fetchOrdersAndProducts = async () => {
+        try {
+            const [ordersData, productsData] = await Promise.all([
+                orderService.getAll(),
+                productService.getAll()
+            ]);
+            setOrders(ordersData);
+            setProducts(productsData);
+        } catch (error) {
+            console.error("Error fetching orders and products:", error);
+        }
+    };
+
+    const fetchBalances = async () => {
+        try {
+            const data = await accountService.getAll();
+            const completed = data.filter(t => t.status === 'Completed');
+
+            const getStats = (methodChecker: (m: string) => boolean) => {
+                const income = completed
+                    .filter(t => methodChecker(t.paymentMethod || '') && t.accountType === 'Income')
+                    .reduce((sum, t) => sum + t.amount, 0);
+                const expense = completed
+                    .filter(t => methodChecker(t.paymentMethod || '') && t.accountType === 'Expense')
+                    .reduce((sum, t) => sum + t.amount, 0);
+                return { balance: income - expense, income, expense };
+            };
+
+            const isBank = (m: string) => m.toLowerCase().includes('bank') || m.toLowerCase().includes('upi') || m.toLowerCase().includes('pay') || m.toLowerCase().includes('transfer');
+            const isCash = (m: string) => m.toLowerCase().includes('cash');
+
+            setBankStats(getStats(isBank));
+            setCashStats(getStats(isCash));
+        } catch (error) {
+            console.error("Error fetching balances:", error);
+        }
+    };
 
     const fetchCategories = async () => {
         setLoadingCategories(true);
@@ -136,6 +181,7 @@ const AccountForm = () => {
                     name: newCategory.name,
                     type: newCategory.type as any,
                     code: code,
+                    section: (formData.section || 'Both') as 'Expansion' | 'Sales' | 'Both',
                     isActive: true, // Ensure it's active immediately
                     createdAt: new Date().toISOString()
                 };
@@ -190,10 +236,12 @@ const AccountForm = () => {
 
     // Filter by type and deduplicate (handles potential double-seeding issues)
     const uniqueCategories = Array.from(new Map(categories.map(item => [item.code, item])).values());
-    const filteredCategories = uniqueCategories.filter(c => c.type === formData.accountType);
+    const filteredCategories = uniqueCategories.filter(c =>
+        c.type === formData.accountType &&
+        (!c.section || c.section === 'Both' || c.section === formData.section)
+    );
 
-    // Filter for Payment Accounts (Assets only - Cash/Bank)
-    const paymentAccounts = uniqueCategories.filter(c => c.type === 'Asset');
+    // Removed legacy Payment Accounts filter
 
     if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
 
@@ -439,109 +487,40 @@ const AccountForm = () => {
                     </div>
 
                     {/* Source/Destination Account (Payment Method) */}
-                    <div style={{ gridColumn: 'span 2', position: 'relative' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                            <label className="form-label" style={{ marginBottom: 0 }}>
-                                {formData.accountType === 'Income' ? 'Deposit To (Asset)' : 'Payment Source (Asset)'}
-                            </label>
-                            <button
-                                onClick={() => {
-                                    setNewCategoryContext('Payment');
-                                    setNewCategory({ ...newCategory, type: 'Asset' }); // Default to Asset for payments
-                                    setEditingId(null);
-                                    setShowNewCategory(true);
-                                }}
-                                style={{
-                                    fontSize: '12px', color: 'var(--primary)', background: 'none', border: 'none',
-                                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
-                                }}
-                            >
-                                <Plus size={14} /> Add New Asset
-                            </button>
-                        </div>
-                        <div className="input-wrapper">
-                            <CreditCard size={18} className="input-icon" />
-                            <input
-                                type="text"
-                                className="form-input icon-input"
-                                placeholder={isPaymentDropdownOpen ? "Search accounts..." : (formData.paymentMethod || "Select Account")}
-                                value={paymentSearch}
-                                onChange={(e) => {
-                                    setPaymentSearch(e.target.value);
-                                    setIsPaymentDropdownOpen(true);
-                                }}
-                                onFocus={() => setIsPaymentDropdownOpen(true)}
-                                onClick={() => setIsPaymentDropdownOpen(true)}
-                            />
-                            {isPaymentDropdownOpen && (
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '100%', left: 0, right: 0,
-                                    zIndex: 50,
-                                    marginTop: '4px',
-                                    background: '#1e293b',
-                                    border: '1px solid var(--border)',
-                                    borderRadius: '12px',
-                                    maxHeight: '240px',
-                                    overflowY: 'auto',
-                                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
-                                }}>
-                                    {paymentAccounts
-                                        .filter(c => c.name.toLowerCase().includes(paymentSearch.toLowerCase()) || c.code.toLowerCase().includes(paymentSearch.toLowerCase()))
-                                        .map(cat => (
-                                            <div
-                                                key={cat.id}
-                                                onClick={() => {
-                                                    setFormData({ ...formData, paymentMethod: cat.name });
-                                                    setPaymentSearch('');
-                                                    setIsPaymentDropdownOpen(false);
-                                                }}
-                                                style={{
-                                                    padding: '10px 16px',
-                                                    cursor: 'pointer',
-                                                    fontSize: '13px',
-                                                    borderBottom: '1px solid rgba(255,255,255,0.05)',
-                                                    background: formData.paymentMethod === cat.name ? 'rgba(255,255,255,0.05)' : 'transparent',
-                                                    display: 'flex',
-                                                    justifyContent: 'space-between',
-                                                    alignItems: 'center'
-                                                }}
-                                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                                                onMouseLeave={(e) => e.currentTarget.style.background = formData.paymentMethod === cat.name ? 'rgba(255,255,255,0.05)' : 'transparent'}
-                                            >
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: cat.type === 'Asset' ? '#3b82f6' : '#f59e0b' }}></div>
-                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                        <span>{cat.name}</span>
-                                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{cat.code}</span>
-                                                    </div>
-                                                </div>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <button
-                                                        onClick={(e) => handleEditClick(e, cat)}
-                                                        style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px' }}
-                                                    >
-                                                        <Edit size={12} />
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => handleDeleteCategory(e, cat)}
-                                                        style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
-                                                    >
-                                                        <Trash2 size={12} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
+                    <div style={{ gridColumn: 'span 2' }}>
+                        <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>{formData.accountType === 'Income' ? 'Deposit To' : 'Payment Source'}</span>
+                            {formData.paymentMethod === 'Cash' && cashStats !== null && (
+                                <div style={{ display: 'flex', gap: '8px', fontSize: '11px', alignItems: 'center' }}>
+                                    <span style={{ color: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>Total Income: +${cashStats.income.toLocaleString()}</span>
+                                    <span style={{ color: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>Total Expense: -${cashStats.expense.toLocaleString()}</span>
+                                    <span style={{ fontWeight: 600, color: cashStats.balance >= 0 ? '#10b981' : '#ef4444', backgroundColor: cashStats.balance >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', padding: '2px 8px', borderRadius: '4px', border: '1px solid currentColor' }}>
+                                        Net Balance: {cashStats.balance >= 0 ? '+' : '-'}${Math.abs(cashStats.balance).toLocaleString()}
+                                    </span>
                                 </div>
                             )}
+                            {formData.paymentMethod === 'Bank Transfer' && bankStats !== null && (
+                                <div style={{ display: 'flex', gap: '8px', fontSize: '11px', alignItems: 'center' }}>
+                                    <span style={{ color: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>Total Income: +${bankStats.income.toLocaleString()}</span>
+                                    <span style={{ color: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>Total Expense: -${bankStats.expense.toLocaleString()}</span>
+                                    <span style={{ fontWeight: 600, color: bankStats.balance >= 0 ? '#10b981' : '#ef4444', backgroundColor: bankStats.balance >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', padding: '2px 8px', borderRadius: '4px', border: '1px solid currentColor' }}>
+                                        Net Balance: {bankStats.balance >= 0 ? '+' : '-'}${Math.abs(bankStats.balance).toLocaleString()}
+                                    </span>
+                                </div>
+                            )}
+                        </label>
+                        <div className="input-wrapper">
+                            <CreditCard size={18} className="input-icon" style={{ zIndex: 10 }} />
+                            <select
+                                className="form-input icon-input"
+                                value={formData.paymentMethod}
+                                onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
+                                style={{ appearance: 'none', cursor: 'pointer' }}
+                            >
+                                <option value="Cash">Cash in Hand</option>
+                                <option value="Bank Transfer">Bank Account</option>
+                            </select>
                         </div>
-                        {/* Overlay to close dropdown when clicking outside */}
-                        {isPaymentDropdownOpen && (
-                            <div
-                                style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }}
-                                onClick={() => setIsPaymentDropdownOpen(false)}
-                            />
-                        )}
                     </div>
 
                     {/* Description */}
@@ -558,6 +537,42 @@ const AccountForm = () => {
                             />
                         </div>
                     </div>
+
+                    {/* Link to Order & Product (Only for Sales Section) */}
+                    {formData.section === 'Sales' && (
+                        <>
+                            <div>
+                                <label className="form-label">Link to Order</label>
+                                <select
+                                    className="form-input"
+                                    value={formData.orderId || ''}
+                                    onChange={(e) => setFormData({ ...formData, orderId: e.target.value })}
+                                >
+                                    <option value="">-- No Order Linked --</option>
+                                    {orders.map(order => (
+                                        <option key={order.id} value={order.id}>
+                                            {order.customer} - ${order.total} ({new Date(order.date).toLocaleDateString()})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="form-label">Link to Product</label>
+                                <select
+                                    className="form-input"
+                                    value={formData.productId || ''}
+                                    onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
+                                >
+                                    <option value="">-- No Product Linked --</option>
+                                    {products.map(product => (
+                                        <option key={product.id} value={product.id}>
+                                            {product.name} ({product.category})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </>
+                    )}
 
                     {/* Party Name */}
                     <div>

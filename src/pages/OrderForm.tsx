@@ -25,6 +25,7 @@ const OrderForm = () => {
         addressState: '',
         addressZip: '',
         date: new Date().toISOString().split('T')[0],
+        time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
         deliveryDate: (() => {
             const d = new Date();
             d.setDate(d.getDate() + 5);
@@ -35,7 +36,10 @@ const OrderForm = () => {
         payment: 'Unpaid',
         items: 1,
         productId: '',
-        productName: ''
+        productName: '',
+        description: '',
+        isCustomProduct: false,
+        customPrice: 0
     });
 
     useEffect(() => {
@@ -65,13 +69,17 @@ const OrderForm = () => {
                         addressState: existingOrder.addressState || '',
                         addressZip: existingOrder.addressZip || '',
                         date: existingOrder.date,
+                        time: existingOrder.time || '',
                         deliveryDate: existingOrder.deliveryDate || '',
                         total: existingOrder.total,
                         status: existingOrder.status,
                         payment: existingOrder.payment,
                         items: existingOrder.items,
                         productId: existingOrder.productId || '',
-                        productName: existingOrder.productName || ''
+                        productName: existingOrder.productName || '',
+                        description: existingOrder.description || '',
+                        isCustomProduct: existingOrder.isCustomProduct || false,
+                        customPrice: existingOrder.customPrice || 0
                     });
                 } else {
                     alert("Order not found");
@@ -96,15 +104,26 @@ const OrderForm = () => {
         try {
             setSaving(true);
 
-            // 1. Fetch fresh product data for stock validation
-            const freshProduct = await productService.getById(order.productId);
-            if (!freshProduct) {
-                throw new Error("Selected product no longer exists.");
-            }
+            // 1. Fetch fresh product data (if not custom)
+            let currentPrice = 0;
+            let currentProductName = '';
 
-            // 2. Strict Stock Check (Only for new orders to avoid complication with edits)
-            if (!isEdit && freshProduct.stock < order.items) {
-                throw new Error(`Insufficient stock! Only ${freshProduct.stock} units available.`);
+            if (order.isCustomProduct) {
+                currentPrice = Number(order.customPrice);
+                currentProductName = order.productName || 'Customised Product';
+                // Custom product has no stock to validate
+            } else {
+                const freshProduct = await productService.getById(order.productId);
+                if (!freshProduct) {
+                    throw new Error("Selected product no longer exists.");
+                }
+
+                // 2. Strict Stock Check (Only for new orders to avoid complication with edits)
+                if (!isEdit && freshProduct.stock < order.items) {
+                    throw new Error(`Insufficient stock! Only ${freshProduct.stock} units available.`);
+                }
+                currentPrice = freshProduct.price;
+                currentProductName = freshProduct.name;
             }
 
             // Construct full address
@@ -120,13 +139,18 @@ const OrderForm = () => {
             const orderData = {
                 ...order,
                 customerAddress: fullAddress,
-                total: freshProduct.price * order.items, // Use fresh price
-                productName: freshProduct.name,
+                total: currentPrice * order.items, // Use fresh price or custom price
+                productName: currentProductName,
                 items: Number(order.items),
                 status: order.status as any,
                 payment: order.payment as any,
                 priority: priority as any,
-                deliveryDate: order.deliveryDate
+                deliveryDate: order.deliveryDate,
+                // Ensure custom fields are saved
+                isCustomProduct: order.isCustomProduct,
+                customPrice: order.isCustomProduct ? Number(order.customPrice) : undefined,
+                time: order.time,
+                description: order.description
             };
 
             if (isEdit && id) {
@@ -135,10 +159,17 @@ const OrderForm = () => {
                 // 1. Add Order
                 await orderService.add(orderData);
 
-                // 2. Decrement Stock (using fresh data)
-                await productService.update(freshProduct.id!, {
-                    stock: freshProduct.stock - order.items
-                });
+                // 2. Decrement Stock (Only for regular products)
+                if (!order.isCustomProduct) {
+                    // Re-fetch to be safe (though we have ID) - wait, we need the ID from the product object if we didn't store it
+                    // But we have order.productId
+                    const freshProduct = await productService.getById(order.productId);
+                    if (freshProduct) {
+                        await productService.update(freshProduct.id!, {
+                            stock: freshProduct.stock - order.items
+                        });
+                    }
+                }
 
                 // 3. Customer logic: Sync with 'customers' collection
                 let existingCustomer = null;
@@ -229,7 +260,7 @@ const OrderForm = () => {
                 />
             </div>
 
-            <form onSubmit={handleSave} className="glass card" style={{ maxWidth: '1000px', margin: '0 auto', padding: '40px' }}>
+            <form onSubmit={handleSave} className="glass card" style={{ maxWidth: '100%', margin: '0 auto', padding: '40px', backgroundColor: '#1e293b' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '32px' }}>
 
                     {/* Customer Information */}
@@ -336,17 +367,78 @@ const OrderForm = () => {
                                 <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '14px' }}>Product *</label>
                                 <select
                                     required
-                                    value={order.productId}
-                                    onChange={(e) => setOrder({ ...order, productId: e.target.value })}
+                                    value={order.isCustomProduct ? 'custom-product' : order.productId}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        if (value === 'custom-product') {
+                                            setOrder({
+                                                ...order,
+                                                productId: 'custom-id', // Placeholder
+                                                isCustomProduct: true,
+                                                productName: '',
+                                                customPrice: 0
+                                            });
+                                        } else {
+                                            const prod = products.find(p => p.id === value);
+                                            setOrder({
+                                                ...order,
+                                                productId: value,
+                                                isCustomProduct: false,
+                                                productName: prod ? prod.name : '',
+                                                customPrice: 0
+                                            });
+                                        }
+                                    }}
                                     style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', outline: 'none' }}
                                 >
                                     <option value="">-- Select Product --</option>
+                                    <option value="custom-product">✨ Customised Product</option>
                                     {products.map(p => (
                                         <option key={p.id} value={p.id} disabled={p.stock <= 0 && !isEdit}>
                                             {p.name} (${p.price})
                                         </option>
                                     ))}
                                 </select>
+                            </div>
+
+                            {/* Additional Fields for Custom Product */}
+                            {order.isCustomProduct && (
+                                <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                    <div style={{ gridColumn: 'span 2' }}>
+                                        <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '14px' }}>Custom Product Name *</label>
+                                        <input
+                                            required
+                                            type="text"
+                                            value={order.productName}
+                                            onChange={(e) => setOrder({ ...order, productName: e.target.value })}
+                                            placeholder="Enter name of custom product..."
+                                            style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', outline: 'none' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '14px' }}>Custom Unit Price ($) *</label>
+                                        <input
+                                            required
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={order.customPrice}
+                                            onChange={(e) => setOrder({ ...order, customPrice: parseFloat(e.target.value) || 0 })}
+                                            style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', outline: 'none' }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Description Field */}
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '14px' }}>Description / Notes</label>
+                                <textarea
+                                    value={order.description}
+                                    onChange={(e) => setOrder({ ...order, description: e.target.value })}
+                                    placeholder="Add any specific details or customization notes..."
+                                    style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', outline: 'none', minHeight: '80px', resize: 'vertical' }}
+                                />
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
@@ -376,14 +468,22 @@ const OrderForm = () => {
                                     )}
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '14px' }}>Order Date</label>
-                                    <div style={{ position: 'relative' }}>
-                                        <Calendar size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                    <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '14px' }}>Order Date & Time</label>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <div style={{ position: 'relative', flex: 1 }}>
+                                            <Calendar size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                            <input
+                                                type="date"
+                                                value={order.date}
+                                                onChange={(e) => setOrder({ ...order, date: e.target.value })}
+                                                style={{ width: '100%', padding: '12px 12px 12px 40px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', outline: 'none' }}
+                                            />
+                                        </div>
                                         <input
-                                            type="date"
-                                            value={order.date}
-                                            onChange={(e) => setOrder({ ...order, date: e.target.value })}
-                                            style={{ width: '100%', padding: '12px 12px 12px 40px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', outline: 'none' }}
+                                            type="time"
+                                            value={order.time}
+                                            onChange={(e) => setOrder({ ...order, time: e.target.value })}
+                                            style={{ width: '100px', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'white', outline: 'none' }}
                                         />
                                     </div>
                                 </div>
@@ -475,7 +575,7 @@ const OrderForm = () => {
                             <div style={{ marginTop: '20px', padding: '24px', borderRadius: '16px', background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '14px', color: 'var(--text-muted)' }}>
                                     <span>Unit Price:</span>
-                                    <span>${selectedProduct?.price.toFixed(2) || '0.00'}</span>
+                                    <span>${(order.isCustomProduct ? order.customPrice : selectedProduct?.price || 0).toFixed(2)}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '14px', color: 'var(--text-muted)' }}>
                                     <span>Quantity:</span>
@@ -484,7 +584,7 @@ const OrderForm = () => {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', fontWeight: 'bold', fontSize: '18px' }}>
                                     <span>Total Amount:</span>
                                     <span style={{ color: 'var(--primary)' }}>
-                                        ${((selectedProduct?.price || 0) * order.items).toFixed(2)}
+                                        ${((order.isCustomProduct ? order.customPrice : selectedProduct?.price || 0) * order.items).toFixed(2)}
                                     </span>
                                 </div>
                             </div>

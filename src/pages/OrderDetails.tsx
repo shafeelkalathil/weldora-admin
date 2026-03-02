@@ -69,125 +69,136 @@ const OrderDetails = () => {
     };
 
     return (
-        <div className="animate-fade-in content-spacing">
-            <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                <div>
-                    <button
-                        onClick={() => navigate('/orders')}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--text-muted)',
-                            cursor: 'pointer',
-                            padding: '0',
-                            marginBottom: '16px'
-                        }}
-                    >
-                        <ChevronLeft size={20} /> Back to Orders
-                    </button>
-                    <Header
-                        title={`Order #${order.id?.substring(0, 8).toUpperCase()}`}
-                        subtitle={`Placed on ${order.date}`}
-                        showSearch={false}
-                        showNotifications={false}
-                    />
-                </div>
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '8px' }}>
-                    <button
-                        onClick={() => window.print()}
-                        className="btn-print no-print"
-                        style={{
-                            padding: '10px 24px',
-                            borderRadius: '12px',
-                            background: 'rgba(255,255,255,0.05)',
-                            color: 'white',
-                            border: '1px solid var(--border)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            fontWeight: 600,
-                            cursor: 'pointer'
-                        }}
-                    >
-                        <Printer size={18} /> Print Invoice
-                    </button>
-                    <Link
-                        to={`/orders/edit/${order.id}`}
-                        style={{
-                            padding: '10px 24px',
-                            borderRadius: '12px',
-                            background: 'var(--primary)',
-                            color: 'white',
-                            textDecoration: 'none',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            fontWeight: 600
-                        }}
-                    >
-                        <Edit size={18} /> Edit Order
-                    </Link>
-                </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '32px' }}>
-
-                {/* Main Order Content */}
-                <div style={{ gridColumn: 'span 8' }}>
-                    <div className="glass card" style={{ padding: '32px', marginBottom: '32px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-                            <h3 style={{ fontSize: '18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <ShoppingBag size={18} color="var(--primary)" /> Finalized Items
-                            </h3>
-                            <span style={{
-                                padding: '6px 16px',
-                                borderRadius: '20px',
-                                fontSize: '13px',
+        <>
+            <div className="animate-fade-in content-spacing">
+                <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+                    <div>
+                        <button
+                            onClick={() => navigate('/orders')}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--text-muted)',
+                                cursor: 'pointer',
+                                padding: '0',
+                                marginBottom: '16px'
+                            }}
+                        >
+                            <ChevronLeft size={20} /> Back to Orders
+                        </button>
+                        <Header
+                            title={`Order #${order.id?.substring(0, 8).toUpperCase()}`}
+                            subtitle={`Placed on ${order.date}`}
+                            showSearch={false}
+                            showNotifications={false}
+                        />
+                    </div>
+                    <div style={{ display: 'flex', gap: '16px', marginBottom: '8px' }}>
+                        <button
+                            onClick={() => window.print()}
+                            className="btn-print no-print"
+                            style={{
+                                padding: '10px 24px',
+                                borderRadius: '12px',
+                                background: 'rgba(255,255,255,0.05)',
+                                color: 'white',
+                                border: '1px solid var(--border)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
                                 fontWeight: 600,
-                                background: getStatusBg(order.status),
-                                color: getStatusColor(order.status)
-                            }}>
-                                {order.status}
-                            </span>
-                        </div>
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <Printer size={18} /> Print Invoice
+                        </button>
+                        <Link
+                            to={`/orders/edit/${order.id}`}
+                            style={{
+                                padding: '10px 24px',
+                                borderRadius: '12px',
+                                background: 'var(--primary)',
+                                color: 'white',
+                                textDecoration: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                fontWeight: 600
+                            }}
+                        >
+                            <Edit size={18} /> Edit Order
+                        </Link>
+                    </div>
+                </div>
 
-                        <div style={{ width: '100%', marginBottom: '40px' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '4fr 1fr 1fr 1fr', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '16px' }}>
-                                <span>Product</span>
-                                <span style={{ textAlign: 'center' }}>Price</span>
-                                <span style={{ textAlign: 'center' }}>Qty</span>
-                                <span style={{ textAlign: 'right' }}>Total</span>
+                <div className="order-layout">
+
+                    {/* Main Order Content */}
+                    <div className="order-main">
+                        <div className="glass card" style={{ padding: '32px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+                                <h3 style={{ fontSize: '18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <ShoppingBag size={18} color="var(--primary)" /> Finalized Items
+                                </h3>
+                                <span style={{
+                                    padding: '6px 16px',
+                                    borderRadius: '20px',
+                                    fontSize: '13px',
+                                    fontWeight: 600,
+                                    background: getStatusBg(order.status),
+                                    color: getStatusColor(order.status)
+                                }}>
+                                    {order.status}
+                                </span>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '4fr 1fr 1fr 1fr', padding: '16px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <div style={{ width: '48px', height: '48px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <Package size={24} color="var(--primary)" />
+                            <div style={{ width: '100%', marginBottom: '40px', overflowX: 'auto' }}>
+                                <div style={{ minWidth: '500px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '4fr 1fr 1fr 1fr', padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '16px' }}>
+                                        <span>Product</span>
+                                        <span style={{ textAlign: 'center' }}>Price</span>
+                                        <span style={{ textAlign: 'center' }}>Qty</span>
+                                        <span style={{ textAlign: 'right' }}>Total</span>
                                     </div>
-                                    <div style={{ fontWeight: 600 }}>{order.productName || 'Custom Item'}</div>
-                                </div>
-                                <span style={{ textAlign: 'center' }}>${(order.total / order.items).toFixed(2)}</span>
-                                <span style={{ textAlign: 'center' }}>x{order.items}</span>
-                                <span style={{ textAlign: 'right', fontWeight: 600 }}>${order.total.toFixed(2)}</span>
-                            </div>
-                        </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                            <div style={{ width: '300px', display: 'grid', gap: '16px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
-                                    <span>Subtotal</span>
-                                    <span>${order.total.toFixed(2)}</span>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '4fr 1fr 1fr 1fr', padding: '16px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <div style={{ width: '48px', height: '48px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Package size={24} color="var(--primary)" />
+                                            </div>
+                                            <div style={{ fontWeight: 600 }}>{order.productName || 'Custom Item'}</div>
+                                        </div>
+                                        <span style={{ textAlign: 'center' }}>${(order.total / order.items).toFixed(2)}</span>
+                                        <span style={{ textAlign: 'center' }}>x{order.items}</span>
+                                        <span style={{ textAlign: 'right', fontWeight: 600 }}>${order.total.toFixed(2)}</span>
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
-                                    <span>Shipping</span>
-                                    <span>$0.00</span>
+                            </div>
+
+                            {order.description && (
+                                <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>
+                                    <span style={{ fontWeight: 600, color: 'white', display: 'block', marginBottom: '4px' }}>Notes / Description:</span>
+                                    {order.description}
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '16px', borderTop: '1px solid var(--border)', fontSize: '20px', fontWeight: 700 }}>
-                                    <span>Total</span>
-                                    <span style={{ color: 'var(--primary)' }}>${order.total.toFixed(2)}</span>
+                            )}
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                <div style={{ width: '300px', display: 'grid', gap: '16px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
+                                        <span>Subtotal</span>
+                                        <span>${order.total.toFixed(2)}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
+                                        <span>Shipping</span>
+                                        <span>$0.00</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '16px', borderTop: '1px solid var(--border)', fontSize: '20px', fontWeight: 700 }}>
+                                        <span>Total</span>
+                                        <span style={{ color: 'var(--primary)' }}>${order.total.toFixed(2)}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -205,7 +216,7 @@ const OrderDetails = () => {
                                 </div>
                                 <div>
                                     <div style={{ fontWeight: 600, fontSize: '14px' }}>Order Placed</div>
-                                    <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{order.date} - 09:42 AM</div>
+                                    <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{order.date} {order.time ? `- ${order.time}` : ''}</div>
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: '16px' }}>
@@ -249,158 +260,158 @@ const OrderDetails = () => {
                             </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Patient Information Sidebar */}
-                <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                    <div className="glass card" style={{ padding: '32px' }}>
-                        <h3 style={{ fontSize: '18px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <User size={18} color="var(--primary)" /> Customer Profile
-                        </h3>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-                            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '20px' }}>
-                                {order.customer.charAt(0)}
-                            </div>
-                            <div>
-                                <div style={{ fontWeight: 600, fontSize: '18px' }}>{order.customer}</div>
-                                <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Customer ID: #CUST-992</div>
-                            </div>
-                        </div>
-                        <div style={{ display: 'grid', gap: '16px' }}>
-                            <div>
-                                <label style={{ color: 'var(--text-muted)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Email Address</label>
-                                <div style={{ fontSize: '14px' }}>{order.customerEmail || 'n/a'}</div>
-                            </div>
-                            <div>
-                                <label style={{ color: 'var(--text-muted)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Phone Number</label>
-                                <div style={{ fontSize: '14px' }}>{order.customerPhone || 'n/a'}</div>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div className="glass card" style={{ padding: '32px' }}>
-                        <h3 style={{ fontSize: '18px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <MapPin size={18} color="#ef4444" /> Shipping Address
-                        </h3>
-                        <div style={{ fontSize: '14px', color: 'var(--text-main)', lineHeight: '1.6' }}>
-                            {order.addressStreet ? (
-                                <div style={{ display: 'grid', gap: '8px' }}>
-                                    <div><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Street:</span> <br />{order.addressStreet}</div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                                        <div><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>City/District:</span> <br />{order.addressCity}</div>
-                                        <div><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>State:</span> <br />{order.addressState}</div>
-                                    </div>
-                                    <div><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Pin Code:</span> <br />{order.addressZip}</div>
+                    {/* Patient Information Sidebar */}
+                    <div className="order-sidebar">
+                        <div className="glass card" style={{ padding: '32px' }}>
+                            <h3 style={{ fontSize: '18px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <User size={18} color="var(--primary)" /> Customer Profile
+                            </h3>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+                                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '20px' }}>
+                                    {order.customer.charAt(0)}
                                 </div>
-                            ) : (
-                                order.customerAddress || 'No shipping address provided.'
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="glass card" style={{ padding: '32px' }}>
-                        <h3 style={{ fontSize: '18px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <CreditCard size={18} color="var(--primary)" /> Payment Information
-                        </h3>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div>
-                                <div style={{ fontWeight: 600, fontSize: '14px' }}>{order.payment}</div>
-                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Payment Method: Bank Transfer</div>
+                                <div>
+                                    <div style={{ fontWeight: 600, fontSize: '18px' }}>{order.customer}</div>
+                                    <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Customer ID: #CUST-992</div>
+                                </div>
                             </div>
-                            {order.payment === 'Paid' && <CheckCircle2 size={24} color="#10b981" />}
+                            <div style={{ display: 'grid', gap: '16px' }}>
+                                <div>
+                                    <label style={{ color: 'var(--text-muted)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Email Address</label>
+                                    <div style={{ fontSize: '14px' }}>{order.customerEmail || 'n/a'}</div>
+                                </div>
+                                <div>
+                                    <label style={{ color: 'var(--text-muted)', fontSize: '12px', display: 'block', marginBottom: '4px' }}>Phone Number</label>
+                                    <div style={{ fontSize: '14px' }}>{order.customerPhone || 'n/a'}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="glass card" style={{ padding: '32px' }}>
+                            <h3 style={{ fontSize: '18px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <MapPin size={18} color="#ef4444" /> Shipping Address
+                            </h3>
+                            <div style={{ fontSize: '14px', color: 'var(--text-main)', lineHeight: '1.6' }}>
+                                {order.addressStreet ? (
+                                    <div style={{ display: 'grid', gap: '8px' }}>
+                                        <div><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Street:</span> <br />{order.addressStreet}</div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                            <div><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>City/District:</span> <br />{order.addressCity}</div>
+                                            <div><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>State:</span> <br />{order.addressState}</div>
+                                        </div>
+                                        <div><span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Pin Code:</span> <br />{order.addressZip}</div>
+                                    </div>
+                                ) : (
+                                    order.customerAddress || 'No shipping address provided.'
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="glass card" style={{ padding: '32px' }}>
+                            <h3 style={{ fontSize: '18px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <CreditCard size={18} color="var(--primary)" /> Payment Information
+                            </h3>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <div style={{ fontWeight: 600, fontSize: '14px' }}>{order.payment}</div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Payment Method: Bank Transfer</div>
+                                </div>
+                                {order.payment === 'Paid' && <CheckCircle2 size={24} color="#10b981" />}
+                            </div>
                         </div>
                     </div>
+
                 </div>
 
-            </div>
-
-            {/* Hidden Professional Invoice Template for Printing */}
-            <div id="invoice-template" className="only-print">
-                <div className="invoice-header">
-                    <div className="company-info">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                            <img src={logo} alt="Weldora" className="company-logo" style={{ height: '40px', objectFit: 'contain' }} />
-                            <h1 style={{ fontSize: '32px', fontWeight: 800, letterSpacing: '2px', color: '#000', margin: 0 }}>
-                                𝐖𝐄𝐋𝐃𝐎𝐑𝐀
-                            </h1>
+                {/* Hidden Professional Invoice Template for Printing */}
+                <div id="invoice-template" className="only-print">
+                    <div className="invoice-header">
+                        <div className="company-info">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                                <img src={logo} alt="Weldora" className="company-logo" style={{ height: '40px', objectFit: 'contain' }} />
+                                <h1 style={{ fontSize: '32px', fontWeight: 800, letterSpacing: '2px', color: '#000', margin: 0 }}>
+                                    𝐖𝐄𝐋𝐃𝐎𝐑𝐀
+                                </h1>
+                            </div>
+                            <p>Perinthalmanna, Malappuram</p>
+                            <p>Kerala 679340</p>
+                            <p>+91 81295 83813 | weldora.in@gmail.com</p>
+                            <p>weldora.info@gmail.com |  weldora.in</p>
                         </div>
-                        <p>Perinthalmanna, Malappuram</p>
-                        <p>Kerala 679340</p>
-                        <p>+91 81295 83813 | weldora.in@gmail.com</p>
-                        <p>weldora.info@gmail.com |  weldora.in</p>
+                        <div className="invoice-meta">
+                            <h2 className="invoice-title">INVOICE</h2>
+                            <p><strong>Invoice #:</strong> WLD-{order.id?.substring(0, 8).toUpperCase()}</p>
+                            <p><strong>Date:</strong> {order.date}</p>
+                            <p><strong>Due Date:</strong> {new Date(new Date(order.date).getTime() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}</p>
+                        </div>
                     </div>
-                    <div className="invoice-meta">
-                        <h2 className="invoice-title">INVOICE</h2>
-                        <p><strong>Invoice #:</strong> WLD-{order.id?.substring(0, 8).toUpperCase()}</p>
-                        <p><strong>Date:</strong> {order.date}</p>
-                        <p><strong>Due Date:</strong> {new Date(new Date(order.date).getTime() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}</p>
+
+                    <div className="invoice-addresses">
+                        <div className="bill-to">
+                            <h3>BILL TO:</h3>
+                            <p><strong>{order.customer}</strong></p>
+                            <p>{order.customerEmail}</p>
+                            <p>{order.customerPhone}</p>
+                        </div>
+                        <div className="ship-to">
+                            <h3>SHIP TO:</h3>
+                            {order.addressStreet ? (
+                                <>
+                                    <p style={{ marginBottom: '4px' }}>{order.addressStreet}</p>
+                                    <p>District: {order.addressCity}</p>
+                                    <p>State: {order.addressState}</p>
+                                    <p>Pin: {order.addressZip}</p>
+                                </>
+                            ) : (
+                                <p>{order.customerAddress || 'No shipping address provided.'}</p>
+                            )}
+                            {order.customerPhone && <p style={{ marginTop: '8px' }}>Phone: {order.customerPhone}</p>}
+                        </div>
+                    </div>
+
+                    <table className="invoice-table">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Unit Price</th>
+                                <th>Qty</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>{order.productName || 'Standard Industrial Product'}</td>
+                                <td>${(order.total / order.items).toFixed(2)}</td>
+                                <td>{order.items}</td>
+                                <td>${order.total.toFixed(2)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div className="invoice-summary">
+                        <div className="summary-row">
+                            <span>Subtotal:</span>
+                            <span>${order.total.toFixed(2)}</span>
+                        </div>
+                        <div className="summary-row">
+                            <span>Tax (0%):</span>
+                            <span>$0.00</span>
+                        </div>
+                        <div className="summary-row grand-total">
+                            <span>Grand Total:</span>
+                            <span>${order.total.toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    <div className="invoice-footer">
+                        <p>Thank you for choosing Weldora!</p>
+                        <p>Terms: Internal processing completed. Payment status: {order.payment}.</p>
                     </div>
                 </div>
 
-                <div className="invoice-addresses">
-                    <div className="bill-to">
-                        <h3>BILL TO:</h3>
-                        <p><strong>{order.customer}</strong></p>
-                        <p>{order.customerEmail}</p>
-                        <p>{order.customerPhone}</p>
-                    </div>
-                    <div className="ship-to">
-                        <h3>SHIP TO:</h3>
-                        {order.addressStreet ? (
-                            <>
-                                <p style={{ marginBottom: '4px' }}>{order.addressStreet}</p>
-                                <p>District: {order.addressCity}</p>
-                                <p>State: {order.addressState}</p>
-                                <p>Pin: {order.addressZip}</p>
-                            </>
-                        ) : (
-                            <p>{order.customerAddress || 'No shipping address provided.'}</p>
-                        )}
-                        {order.customerPhone && <p style={{ marginTop: '8px' }}>Phone: {order.customerPhone}</p>}
-                    </div>
-                </div>
-
-                <table className="invoice-table">
-                    <thead>
-                        <tr>
-                            <th>Description</th>
-                            <th>Unit Price</th>
-                            <th>Qty</th>
-                            <th>Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>{order.productName || 'Standard Industrial Product'}</td>
-                            <td>${(order.total / order.items).toFixed(2)}</td>
-                            <td>{order.items}</td>
-                            <td>${order.total.toFixed(2)}</td>
-                        </tr>
-                    </tbody>
-                </table>
-
-                <div className="invoice-summary">
-                    <div className="summary-row">
-                        <span>Subtotal:</span>
-                        <span>${order.total.toFixed(2)}</span>
-                    </div>
-                    <div className="summary-row">
-                        <span>Tax (0%):</span>
-                        <span>$0.00</span>
-                    </div>
-                    <div className="summary-row grand-total">
-                        <span>Grand Total:</span>
-                        <span>${order.total.toFixed(2)}</span>
-                    </div>
-                </div>
-
-                <div className="invoice-footer">
-                    <p>Thank you for choosing Weldora!</p>
-                    <p>Terms: Internal processing completed. Payment status: {order.payment}.</p>
-                </div>
-            </div>
-
-            <style>{`
+                <style>{`
                 /* Screen only styles */
                 .only-print { display: none; }
 
@@ -439,8 +450,39 @@ const OrderDetails = () => {
                     
                     .invoice-footer { margin-top: 60px; border-top: 1px solid #eee; padding-top: 20px; text-align: center; font-size: 12px; color: #999; }
                 }
+
+                /* Responsive Styles */
+                .order-layout {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 32px;
+                }
+                .order-main {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 32px;
+                }
+                .order-sidebar {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 32px;
+                    order: -1;
+                }
+
+                @media (max-width: 1024px) {
+                    .order-sidebar {
+                        grid-template-columns: repeat(2, 1fr);
+                    }
+                }
+                @media (max-width: 768px) {
+                    .invoice-addresses {
+                        flex-direction: column;
+                        gap: 20px;
+                    }
+                }
             `}</style>
-        </div >
+            </div >
+        </>
     );
 };
 

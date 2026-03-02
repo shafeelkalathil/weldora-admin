@@ -22,6 +22,11 @@ export interface Order {
     items: number; // Quantity
     productId?: string;
     productName?: string;
+    // New fields
+    time?: string;
+    description?: string;
+    isCustomProduct?: boolean;
+    customPrice?: number;
 }
 
 export const orderService = {

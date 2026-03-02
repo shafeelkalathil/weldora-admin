@@ -11,6 +11,7 @@ export interface AccountCategory {
     name: string; // e.g., "Sales Revenue", "Salary Expense"
     type: 'Income' | 'Expense' | 'Asset' | 'Liability';
     subType?: string; // e.g., "Operating Income", "Administrative Expense"
+    section?: 'Expansion' | 'Sales' | 'Both';
     description?: string;
     isActive: boolean;
     createdAt: string;
@@ -45,7 +46,11 @@ export interface AccountTransaction {
 
     // References
     referenceId?: string; // Link to order, material, staff, etc.
-    referenceType?: 'Order' | 'Material' | 'Staff' | 'Asset' | 'Other';
+    referenceType?: 'Order' | 'Material' | 'Staff' | 'Asset' | 'Other' | 'Product';
+
+    // Explicit linked entities
+    orderId?: string;
+    productId?: string;
 
     status: 'Completed' | 'Pending' | 'Cancelled';
 

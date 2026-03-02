@@ -18,13 +18,15 @@ const Accounts = () => {
     const [categories, setCategories] = useState<AccountCategory[]>([]);
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [editingCategory, setEditingCategory] = useState<AccountCategory | null>(null);
-    const [categoryForm, setCategoryForm] = useState({ name: '', type: 'Expense', code: '', description: '' });
+    const [categoryForm, setCategoryForm] = useState({ name: '', type: 'Expense', code: '', description: '', section: 'Both' as 'Sales' | 'Expansion' | 'Both' });
 
     const [filterType, setFilterType] = useState<string>('All');
     const [filterAccount, setFilterAccount] = useState<string>('All');
     const [searchQuery, setSearchQuery] = useState('');
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
+    const [currentMonth, setCurrentMonth] = useState(() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    });
 
     // Enhanced Filter States
     const [dayBookAccount, setDayBookAccount] = useState('All');
@@ -78,7 +80,8 @@ const Accounts = () => {
             if (editingCategory) {
                 await chartOfAccountsService.update(editingCategory.id!, {
                     name: categoryForm.name,
-                    description: categoryForm.description
+                    description: categoryForm.description,
+                    section: categoryForm.section
                     // Type and code usually shouldn't change to maintain integrity, or handle carefully
                 });
                 showToast("Account updated successfully", "success");
@@ -89,6 +92,7 @@ const Accounts = () => {
                     type: categoryForm.type as any,
                     code,
                     description: categoryForm.description,
+                    section: categoryForm.section,
                     isActive: true,
                     createdAt: new Date().toISOString()
                 });
@@ -114,10 +118,10 @@ const Accounts = () => {
     const openCategoryModal = (cat?: AccountCategory) => {
         if (cat) {
             setEditingCategory(cat);
-            setCategoryForm({ name: cat.name, type: cat.type, code: cat.code, description: cat.description || '' });
+            setCategoryForm({ name: cat.name, type: cat.type, code: cat.code, description: cat.description || '', section: cat.section || 'Both' });
         } else {
             setEditingCategory(null);
-            setCategoryForm({ name: '', type: 'Expense', code: '', description: '' });
+            setCategoryForm({ name: '', type: 'Expense', code: '', description: '', section: 'Both' });
         }
         setShowCategoryModal(true);
     };
@@ -144,26 +148,11 @@ const Accounts = () => {
             t.accountName.toLowerCase().includes(searchQuery.toLowerCase()) ||
             t.amount.toString().includes(searchQuery);
 
-        let dateMatch = true;
-        if (startDate && endDate) {
-            dateMatch = t.date >= startDate && t.date <= endDate;
-        } else if (startDate) {
-            dateMatch = t.date >= startDate;
-        } else if (endDate) {
-            dateMatch = t.date <= endDate;
-        }
+        const dateMatch = currentMonth ? t.date.startsWith(currentMonth) : true;
 
         return typeMatch && accountMatch && searchMatch && dateMatch;
     });
 
-    // Calculate comprehensive metrics (Based on Section, respecting Date filter if needed, but usually metrics cover all time or specific period. 
-    // Let's assume metrics cards should reflect the SELECTED SECTION only, but maybe ALL TIME unless date is set? 
-    // Current implementation used 'transactions' (all time). 
-    // Let's use 'sectionTransactions' (all time for that section). 
-    // If we want metrics to react to Date Filter, we should use a date-filtered version of sectionTransactions.
-    // However, usually "Total Revenue" on a dashboard is All Time or YTD. 
-    // EXISTING LOGIC was All Time (unless I missed something).
-    // Let's stick to All Time for the Section.
     const completed = sectionTransactions.filter(t => t.status === 'Completed');
 
     // Revenue breakdown
@@ -180,6 +169,14 @@ const Accounts = () => {
         .reduce((sum, t) => sum + t.amount, 0);
 
     const totalRevenue = salesRevenue + investmentRevenue + otherRevenue;
+
+    const revenueByAccount = completed
+        .filter(t => t.accountType === 'Income')
+        .reduce((acc, t) => {
+            const name = t.accountName || 'Other';
+            acc[name] = (acc[name] || 0) + t.amount;
+            return acc;
+        }, {} as Record<string, number>);
 
     // Expense breakdown
     const salaryExpense = completed
@@ -216,36 +213,27 @@ const Accounts = () => {
     const totalExpenses = salaryExpense + dividendExpense + materialExpense + rentExpense +
         electricityExpense + maintenanceExpense + otherExpense;
 
-    // Cash flow by payment account (Enhanced)
-    const getFlow = (method: string) => {
+    // Net Profit by payment account (Strictly Income vs Expense, ignoring Assets)
+    const getFlow = (methodChecker: (m: string) => boolean) => {
         const income = completed
-            .filter(t => t.paymentMethod === method && t.accountType === 'Income')
+            .filter(t => methodChecker(t.paymentMethod || '') && t.accountType === 'Income')
             .reduce((sum, t) => sum + t.amount, 0);
         const expense = completed
-            .filter(t => t.paymentMethod === method && t.accountType === 'Expense') // Only operational expenses
+            .filter(t => methodChecker(t.paymentMethod || '') && t.accountType === 'Expense')
             .reduce((sum, t) => sum + t.amount, 0);
-        const assets = completed
-            .filter(t => t.paymentMethod === method && t.accountType === 'Asset')
-            .reduce((sum, t) => sum + t.amount, 0);
-        // "Out" includes both Expenses and Asset purchases from that account
-        return { in: income, out: expense + assets, balance: income - (expense + assets) };
+
+        return { income, expense, netProfit: income - expense };
     };
 
-    const bankFlow = getFlow('Bank Transfer');
-    const upiFlow = getFlow('UPI');
-    const cashFlow = getFlow('Cash');
+    const isBank = (m: string) => m.toLowerCase().includes('bank') || m.toLowerCase().includes('upi') || m.toLowerCase().includes('pay') || m.toLowerCase().includes('transfer');
+    const isCash = (m: string) => m.toLowerCase().includes('cash');
 
-    // Investment Fund Analysis
-    const totalAssetPurchase = completed
-        .filter(t => t.accountType === 'Asset')
-        .reduce((sum, t) => sum + t.amount, 0);
-
-    const investmentBalance = investmentRevenue - totalAssetPurchase;
+    const bankFlow = getFlow(isBank);
+    const cashFlow = getFlow(isCash);
 
     // Operational Net Profit (Already excluded Investment Revenue)
     // We must ensure 'totalExpenses' EXCLUDES Asset purchases (which it does, as it filters by 'Expense')
     const operationalRevenue = salesRevenue + otherRevenue;
-    const netBalance = operationalRevenue - totalExpenses;
 
     const getTypeColor = (type: string) => {
         const colors: any = {
@@ -646,7 +634,7 @@ const Accounts = () => {
                         <tbody>
                             {(() => {
                                 const accountTxns = sectionTransactions
-                                    .filter(t => !selectedLedgerAccount || selectedLedgerAccount === 'All' || t.accountName === selectedLedgerAccount)
+                                    .filter(t => (!selectedLedgerAccount || selectedLedgerAccount === 'All' || t.accountName === selectedLedgerAccount))
                                     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
                                 if (accountTxns.length === 0) {
@@ -666,37 +654,30 @@ const Accounts = () => {
                                             const debitAmount = !isCredit ? t.amount : 0;
                                             const creditAmount = isCredit ? t.amount : 0;
 
-                                            totalDebit += debitAmount;
-                                            totalCredit += creditAmount;
+                                            const isPending = t.status === 'Pending';
 
-                                            // Ledger logic: 
-                                            // Start with 0.
-                                            // If Debit -> Balance decreases (or increases if it's an Expense/Asset account)?
-                                            // Standard Accounting:
-                                            // Assets/Expenses: Dr is +, Cr is -
-                                            // Liabilities/Income: Cr is +, Dr is -
-                                            // BUT ensuring a single continuous column is tricky without knowing the "Nature" of the account implicitly.
-                                            // Let's assume the user wants to see the "Net" impact.
-                                            // Standard Ledger often assumes a "Normal Balance" side.
-                                            // For simplicity in this UI:
-                                            // Let's assume Credit (Receipt/Income) is Positive (+)
-                                            // Debit (Payment/Expense) is Negative (-)
-                                            // OR vice versa depending on account type.
-
-                                            // Let's check Account Type of the *selected* account to decide sign?
-                                            // If 'All' is selected, mixed signs are confusing.
-                                            // Default: Credit +, Debit - (Bank Statement style)
-
-                                            if (isCredit) runningBalance += t.amount;
-                                            else runningBalance -= t.amount;
+                                            if (!isPending) {
+                                                totalDebit += debitAmount;
+                                                totalCredit += creditAmount;
+                                                if (isCredit) runningBalance += t.amount;
+                                                else runningBalance -= t.amount;
+                                            }
 
                                             return (
                                                 <tr
                                                     key={t.id}
-                                                    style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}
+                                                    style={{
+                                                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                                        cursor: 'pointer',
+                                                        opacity: isPending ? 0.6 : 1,
+                                                        background: isPending ? 'rgba(245, 158, 11, 0.05)' : 'transparent'
+                                                    }}
                                                     onClick={() => navigate(`/accounts/view/${t.id}`)}
                                                 >
-                                                    <td style={{ padding: '12px' }}>{t.date}</td>
+                                                    <td style={{ padding: '12px' }}>
+                                                        {t.date}
+                                                        {isPending && <div style={{ fontSize: '10px', color: '#f59e0b', fontWeight: 600 }}>PENDING</div>}
+                                                    </td>
                                                     <td style={{ padding: '12px' }}>
                                                         <div style={{ fontWeight: 500 }}>{t.description}</div>
                                                         <div style={{ color: 'var(--text-muted)', fontSize: '11px', display: 'flex', gap: '8px' }}>
@@ -844,6 +825,26 @@ const Accounts = () => {
                                     </div>
 
                                     <div>
+                                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Account Section Assignment</label>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                                            {['Both', 'Sales', 'Expansion'].map(sec => (
+                                                <button
+                                                    key={sec}
+                                                    onClick={() => setCategoryForm({ ...categoryForm, section: sec as any })}
+                                                    style={{
+                                                        padding: '10px', borderRadius: '8px', border: '1px solid var(--border)',
+                                                        background: categoryForm.section === sec ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                                                        color: categoryForm.section === sec ? 'white' : 'var(--text-muted)',
+                                                        cursor: 'pointer', fontSize: '13px', textAlign: 'center'
+                                                    }}
+                                                >
+                                                    {sec}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div>
                                         <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>Description (Optional)</label>
                                         <textarea
                                             value={categoryForm.description}
@@ -883,18 +884,18 @@ const Accounts = () => {
                                 <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Total Revenue</div>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px' }}>
-                                    <span style={{ fontSize: '13px' }}>💰 Sales Revenue</span>
-                                    <span style={{ fontWeight: 600, color: '#10b981' }}>${salesRevenue.toLocaleString()}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px' }}>
-                                    <span style={{ fontSize: '13px' }}>📈 Investment</span>
-                                    <span style={{ fontWeight: 600, color: '#3b82f6' }}>${investmentRevenue.toLocaleString()}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'rgba(99, 102, 241, 0.1)', borderRadius: '8px' }}>
-                                    <span style={{ fontSize: '13px' }}>💵 Other Income</span>
-                                    <span style={{ fontWeight: 600, color: '#6366f1' }}>${otherRevenue.toLocaleString()}</span>
-                                </div>
+                                {Object.keys(revenueByAccount).length === 0 ? (
+                                    <div style={{ padding: '10px', color: 'var(--text-muted)', fontSize: '13px', textAlign: 'center' }}>No revenue recorded</div>
+                                ) : (
+                                    Object.entries(revenueByAccount)
+                                        .sort(([, a], [, b]) => b - a)
+                                        .map(([name, amount], index) => (
+                                            <div key={name} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: `rgba(${index % 2 === 0 ? '16, 185, 129' : '99, 102, 241'}, 0.1)`, borderRadius: '8px' }}>
+                                                <span style={{ fontSize: '13px' }}>{name}</span>
+                                                <span style={{ fontWeight: 600, color: index % 2 === 0 ? '#10b981' : '#6366f1' }}>${amount.toLocaleString()}</span>
+                                            </div>
+                                        ))
+                                )}
                             </div>
                         </div>
 
@@ -940,7 +941,7 @@ const Accounts = () => {
                     </div>
 
                     {/* Middle Row - Cash Flow & Net Balance */}
-                    <div className="grid-dashboard" style={{ gridTemplateColumns: 'repeat(5, 1fr)', marginBottom: '32px' }}>
+                    <div className="grid-dashboard" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: '32px' }}>
                         <div className="glass card">
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
                                 <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -948,28 +949,12 @@ const Accounts = () => {
                                 </div>
                                 <div>
                                     <p style={{ color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase' }}>Bank Account</p>
-                                    <h3 style={{ fontSize: '18px', marginTop: '0', color: '#3b82f6' }}>${bankFlow.balance.toLocaleString()}</h3>
+                                    <h3 style={{ fontSize: '18px', marginTop: '0', color: '#3b82f6' }}>Net Profit: ${bankFlow.netProfit.toLocaleString()}</h3>
                                 </div>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                                <span style={{ color: '#10b981' }}>In: +${bankFlow.in.toLocaleString()}</span>
-                                <span style={{ color: '#ef4444' }}>Out: -${bankFlow.out.toLocaleString()}</span>
-                            </div>
-                        </div>
-
-                        <div className="glass card">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(139, 92, 246, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <CreditCard size={18} color="#8b5cf6" />
-                                </div>
-                                <div>
-                                    <p style={{ color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase' }}>UPI Balance</p>
-                                    <h3 style={{ fontSize: '18px', marginTop: '0', color: '#8b5cf6' }}>${upiFlow.balance.toLocaleString()}</h3>
-                                </div>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                                <span style={{ color: '#10b981' }}>In: +${upiFlow.in.toLocaleString()}</span>
-                                <span style={{ color: '#ef4444' }}>Out: -${upiFlow.out.toLocaleString()}</span>
+                                <span style={{ color: '#10b981' }}>Total Income: +${bankFlow.income.toLocaleString()}</span>
+                                <span style={{ color: '#ef4444' }}>Total Expense: -${bankFlow.expense.toLocaleString()}</span>
                             </div>
                         </div>
 
@@ -980,50 +965,30 @@ const Accounts = () => {
                                 </div>
                                 <div>
                                     <p style={{ color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase' }}>Cash in Hand</p>
-                                    <h3 style={{ fontSize: '18px', marginTop: '0', color: '#22c55e' }}>${cashFlow.balance.toLocaleString()}</h3>
+                                    <h3 style={{ fontSize: '18px', marginTop: '0', color: '#22c55e' }}>Net Profit: ${cashFlow.netProfit.toLocaleString()}</h3>
                                 </div>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                                <span style={{ color: '#10b981' }}>In: +${cashFlow.in.toLocaleString()}</span>
-                                <span style={{ color: '#ef4444' }}>Out: -${cashFlow.out.toLocaleString()}</span>
-                            </div>
-                        </div>
-
-                        {/* Investment Fund Card */}
-                        <div className="glass card" style={{ position: 'relative', overflow: 'hidden' }}>
-                            <div style={{ position: 'absolute', top: 0, right: 0, padding: '4px 8px', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: '10px', borderBottomLeftRadius: '8px' }}>
-                                Capital Fund
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <TrendingUp size={18} color="#f59e0b" />
-                                </div>
-                                <div>
-                                    <p style={{ color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase' }}>Investment</p>
-                                    <h3 style={{ fontSize: '18px', marginTop: '0', color: '#f59e0b' }}>${investmentBalance.toLocaleString()}</h3>
-                                </div>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                                <span style={{ color: '#3b82f6' }}>Fund: ${investmentRevenue.toLocaleString()}</span>
-                                <span style={{ color: '#ef4444' }}>Asset: ${totalAssetPurchase.toLocaleString()}</span>
+                                <span style={{ color: '#10b981' }}>Total Income: +${cashFlow.income.toLocaleString()}</span>
+                                <span style={{ color: '#ef4444' }}>Total Expense: -${cashFlow.expense.toLocaleString()}</span>
                             </div>
                         </div>
 
                         <div className="glass card">
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: netBalance >= 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <DollarSign size={18} color={netBalance >= 0 ? '#10b981' : '#ef4444'} />
+                                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: (bankFlow.netProfit + cashFlow.netProfit) >= 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <DollarSign size={18} color={(bankFlow.netProfit + cashFlow.netProfit) >= 0 ? '#10b981' : '#ef4444'} />
                                 </div>
                                 <div>
-                                    <p style={{ color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase' }}>Operating Net</p>
-                                    <h3 style={{ fontSize: '18px', marginTop: '0', color: netBalance >= 0 ? '#10b981' : '#ef4444' }}>
-                                        ${Math.abs(netBalance).toLocaleString()}
+                                    <p style={{ color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase' }}>Overall</p>
+                                    <h3 style={{ fontSize: '18px', marginTop: '0', color: (bankFlow.netProfit + cashFlow.netProfit) >= 0 ? '#10b981' : '#ef4444' }}>
+                                        Net Profit: ${(bankFlow.netProfit + cashFlow.netProfit).toLocaleString()}
                                     </h3>
                                 </div>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                                <span style={{ color: '#10b981' }}>Rev: ${operationalRevenue.toLocaleString()}</span>
-                                <span style={{ color: '#ef4444' }}>Exp: ${totalExpenses.toLocaleString()}</span>
+                                <span style={{ color: '#10b981' }}>Total Income: +${(bankFlow.income + cashFlow.income).toLocaleString()}</span>
+                                <span style={{ color: '#ef4444' }}>Total Expense: -${(bankFlow.expense + cashFlow.expense).toLocaleString()}</span>
                             </div>
                         </div>
                     </div>
@@ -1147,22 +1112,39 @@ const Accounts = () => {
                                     />
                                 </div>
 
-                                {/* Date Filter */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', padding: '8px 12px', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                                    <Calendar size={16} color="var(--text-muted)" />
-                                    <input
-                                        type="date"
-                                        value={startDate}
-                                        onChange={(e) => setStartDate(e.target.value)}
-                                        style={{ background: 'none', border: 'none', color: 'white', fontSize: '13px', outline: 'none', colorScheme: 'dark' }}
-                                    />
-                                    <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>to</span>
-                                    <input
-                                        type="date"
-                                        value={endDate}
-                                        onChange={(e) => setEndDate(e.target.value)}
-                                        style={{ background: 'none', border: 'none', color: 'white', fontSize: '13px', outline: 'none', colorScheme: 'dark' }}
-                                    />
+                                {/* Month Pagination */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', padding: '6px 12px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                                    <button
+                                        onClick={() => {
+                                            const [y, m] = currentMonth.split('-');
+                                            const d = new Date(parseInt(y), parseInt(m) - 2);
+                                            setCurrentMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+                                        }}
+                                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', display: 'flex' }}
+                                    >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+                                    </button>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Calendar size={14} color="var(--text-muted)" />
+                                        <input
+                                            type="month"
+                                            value={currentMonth}
+                                            onChange={(e) => setCurrentMonth(e.target.value)}
+                                            style={{ background: 'none', border: 'none', color: 'white', fontSize: '13px', outline: 'none', colorScheme: 'dark', fontWeight: 500 }}
+                                        />
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            const [y, m] = currentMonth.split('-');
+                                            const d = new Date(parseInt(y), parseInt(m));
+                                            setCurrentMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+                                        }}
+                                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', display: 'flex' }}
+                                    >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                                    </button>
                                 </div>
                             </div>
 
